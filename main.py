@@ -1,6 +1,9 @@
 import argparse
 
-class FolderSynchronizer:
+
+
+
+class FolderSynchronizerApp:
     def __init__(self):
         self.args = self.parse_arguments()
 
@@ -14,4 +17,4 @@ class FolderSynchronizer:
 
 # Press the green button in the gutter to run the script.
 if __name__ == '__main__':
-    app = FolderSynchronizer()
+    app = FolderSynchronizerApp()
