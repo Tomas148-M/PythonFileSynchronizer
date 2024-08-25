@@ -1,5 +1,5 @@
 import argparse
-
+import FolderSynchronizer
 
 
 
@@ -14,6 +14,10 @@ class FolderSynchronizerApp:
         parser.add_argument("--interval", type=int, required=True, help="Synchronization interval in seconds")
         parser.add_argument("--logfile", required=True, help="Path to the log file")
         return parser.parse_args()
+
+    def runApp(self):
+        synchronizer = FolderSynchronizer(self.args.source, self.args.replica, self.args.logfile)
+
 
 # Press the green button in the gutter to run the script.
 if __name__ == '__main__':
