@@ -15,7 +15,7 @@ class FolderSynchronizerApp:
 
     def runApp(self):
         synchronizer = FolderSynchronizer(self.args.source, self.args.replica, self.args.logfile)
-
+        synchronizer.start_sync(self.args.interval)
 
 # Press the green button in the gutter to run the script.
 if __name__ == '__main__':
