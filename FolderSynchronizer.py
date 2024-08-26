@@ -5,10 +5,10 @@ import shutil
 import time
 
 class FolderSynchronizer:
-    def __init__(self, source, replica, log_file):
+    def __init__(self, source, backup, log_file):
         print("FolderSynchronizer")
         self.source = source
-        self.replica = replica
+        self.backup = backup
         self.log_file = log_file
         self.setup_logging()
 
@@ -45,29 +45,36 @@ class FolderSynchronizer:
 
     def sync_files(self):
         source_files = self.get_all_files(self.source)
-        replica_files = self.get_all_files(self.replica)
+        backup_files = self.get_all_files(self.backup)
 
-        files_to_copy = source_files - replica_files
-        files_to_delete = replica_files - source_files
+        files_to_copy = source_files - backup_files
+        files_to_delete = backup_files - source_files
         files_to_update = filter(
             lambda f: self.needs_update(f),
-            source_files & replica_files
+            source_files & backup_files
         )
 
-        # Copy new files from source to replica
+        # Copy new files from source to backup
         list(map(lambda f: self.copy_file(f), files_to_copy))
 
-        # Update modified files in replica
+        # Delete files from backup that don't exist in source
+        list(map(lambda f: self.remove_file(f), files_to_delete))
+
+        # Update modified files in backup
         list(map(lambda f: self.copy_file(f), files_to_update))
 
     def needs_update(self, rel_path):
         source_file = os.path.join(self.source, rel_path)
-        replica_file = os.path.join(self.replica, rel_path)
-        return self.calculate_md5(source_file) != self.calculate_md5(replica_file)
+        backup_file = os.path.join(self.backup, rel_path)
+        return self.calculate_md5(source_file) != self.calculate_md5(backup_file)
 
     """************** Files Service Helper Methods ***********************"""
     def copy_file(self, relative_path):
         source_file = os.path.join(self.source, relative_path)
-        replica_file = os.path.join(self.replica, relative_path)
-        shutil.copy2(source_file, replica_file)
+        backup_file = os.path.join(self.backup, relative_path)
+        shutil.copy2(source_file, backup_file)
         logging.info(f"File copied/updated: {relative_path}")
+
+    def remove_file(self, relative_path):
+        os.remove(os.path.join(self.backup, relative_path))
+        logging.info(f"File deleted: {relative_path}")
