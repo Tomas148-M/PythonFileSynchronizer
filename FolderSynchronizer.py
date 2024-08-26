@@ -23,12 +23,15 @@ class FolderSynchronizer:
         logging.info("Starting folder synchronization...")
         try:
             while True:
-                self.sync_files()
+                self.sync_folders()
                 logging.info("Synchronization complete.")
                 time.sleep(interval)
         except KeyboardInterrupt:
             logging.info("Folder synchronization terminated.")
 
+    def sync_folders(self):
+        self.sync_directories()
+        self.sync_files()
 
     def calculate_md5(self, file_path):
         """Calculate the MD5 checksum of a file."""
@@ -43,7 +46,15 @@ class FolderSynchronizer:
             for file in files
         )
 
+    def get_all_directories(self, root):
+        """Get all directories in the directory tree."""
+        return set(
+            os.path.relpath(dirpath, root)
+            for dirpath, _, _ in os.walk(root)
+        )
+
     def sync_files(self):
+        """synchronization of all files"""
         source_files = self.get_all_files(self.source)
         backup_files = self.get_all_files(self.backup)
 
@@ -57,11 +68,25 @@ class FolderSynchronizer:
         # Copy new files from source to backup
         list(map(lambda f: self.copy_file(f), files_to_copy))
 
+        # Update modified files in backup
+        list(map(lambda f: self.copy_file(f), files_to_update))
+
         # Delete files from backup that don't exist in source
         list(map(lambda f: self.remove_file(f), files_to_delete))
 
-        # Update modified files in backup
-        list(map(lambda f: self.copy_file(f), files_to_update))
+    def sync_directories(self):
+        """synchronization of all directories"""
+        source_dirs = self.get_all_directories(self.source)
+        backup_dirs = self.get_all_directories(self.backup)
+
+        dirs_to_create = source_dirs - backup_dirs
+        dirs_to_delete = backup_dirs - source_dirs
+
+        # Create directories that exist in source but not in backup
+        list(map(lambda d: self.create_directory(d), dirs_to_create))
+
+        # Remove directories that exist in backup but not in source
+        list(map(lambda d: self.remove_directory(d), dirs_to_delete))
 
     def needs_update(self, rel_path):
         source_file = os.path.join(self.source, rel_path)
@@ -78,3 +103,21 @@ class FolderSynchronizer:
     def remove_file(self, relative_path):
         os.remove(os.path.join(self.backup, relative_path))
         logging.info(f"File deleted: {relative_path}")
+
+    """************** Folders Service Helper Methods ***********************"""
+    def create_directory(self, relative_path):
+        try:
+         os.makedirs(os.path.join(self.backup, relative_path))
+        except:
+         logging.info(f"Directory already exists: {relative_path}")
+        logging.info(f"Directory created: {relative_path}")
+
+    def remove_directory(self, relative_path):
+
+        try:
+         # Used shutil because os remove have problem with permisions
+         shutil.rmtree(os.path.join(self.backup, relative_path))
+         logging.info(f"Directory deleted: {relative_path}")
+        except:
+         logging.info(f"Directory removing failed {relative_path}")
+
