@@ -3,6 +3,7 @@ import hashlib
 import os
 import shutil
 import time
+import msvcrt
 
 class FolderSynchronizer:
     def __init__(self, source, backup, log_file):
@@ -94,15 +95,47 @@ class FolderSynchronizer:
         return self.calculate_md5(source_file) != self.calculate_md5(backup_file)
 
     """************** Files Service Helper Methods ***********************"""
+
+    def is_file_stable(self, file_path, check_interval=1, stability_duration=5):
+        """Check, if time of last file modification wasnt changed."""
+        stable_time = 0
+        previous_size = os.path.getsize(file_path)
+
+        while stable_time < stability_duration:
+            time.sleep(check_interval)
+            current_size = os.path.getsize(file_path)
+
+            if current_size == previous_size:
+                stable_time += check_interval
+            else:
+                stable_time = 0  # Size was changed, reset stability time
+
+            previous_size = current_size
+
+        return True
+
     def copy_file(self, relative_path):
         source_file = os.path.join(self.source, relative_path)
         backup_file = os.path.join(self.backup, relative_path)
-        shutil.copy2(source_file, backup_file)
-        logging.info(f"File copied/updated: {relative_path}")
+
+        """Copy file, in case that it is stable according the last modification time."""
+        try:
+            shutil.copy2(source_file, backup_file)
+            print(f"File {source_file} was successfully copied{backup_file}.")
+        except IOError as e:
+            print(f"Failure durring the copying  {source_file}: {e}")
+            print("Try to copy file again after size stability check")
+            if self.is_file_stable(source_file):
+                shutil.copy2(source_file, backup_file)
+                print(f"File {source_file} was successfully copied to {backup_file} after stability check.")
+            else:
+                print(f"File {source_file} is still unstable, copying failed.")
+
 
     def remove_file(self, relative_path):
         os.remove(os.path.join(self.backup, relative_path))
         logging.info(f"File deleted: {relative_path}")
+
 
     """************** Folders Service Helper Methods ***********************"""
     def create_directory(self, relative_path):
